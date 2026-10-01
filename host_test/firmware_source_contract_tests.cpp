@@ -119,7 +119,8 @@ static_assert(std::is_same_v<
               SpeakerAssetsRuntimeCore::StepOutcome>);
 
 std::string read_source(const std::string& relative_path) {
-  std::ifstream input(std::string(EASY_INPUT_REPO_ROOT) + "/" + relative_path);
+  std::ifstream input(std::string(EASY_INPUT_REPO_ROOT) + "/" + relative_path,
+                      std::ios::binary);
   assert(input.good());
   std::ostringstream contents;
   contents << input.rdbuf();

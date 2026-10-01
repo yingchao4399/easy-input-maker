@@ -21,7 +21,7 @@ constexpr std::size_t kWs2812SymbolCount = (ai_keyboard::kWs2812Count * 24U) + 1
 constexpr int kRmtFlushWaitMs = 2 * portTICK_PERIOD_MS;
 constexpr std::array<Rgb, ai_keyboard::BootLedSequence::kPixelCount>
     kColdBootProbeColors{{
-        {34, 0, 0},
+        {24, 0, 24},
         {28, 10, 0},
         {0, 28, 0},
         {0, 0, 34},
