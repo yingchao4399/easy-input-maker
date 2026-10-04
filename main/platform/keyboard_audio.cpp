@@ -1241,14 +1241,16 @@ void KeyboardAudioLink::run_control_channel() {
       // 合法控制命令视作用户活动:立即回到活跃级(心跳 2s / PS_MIN)。
       note_remote_work_ready();
       switch (command->action) {
-        case ai_keyboard::AudioControlAction::Start:
+        case ai_keyboard::AudioControlAction::Start: {
           start_stream("wifi_control", command->session_id);
-          if (active_session_id() == command->session_id) {
-            arm_session_lease(command->session_id);
-          } else {
-            status = ai_keyboard::AudioControlAckStatus::Unavailable;
-          }
+          const bool session_active =
+              active_session_id() == command->session_id;
+          const bool lease_armed =
+              session_active && arm_session_lease(command->session_id);
+          status = ai_keyboard::audio_control_start_ack_status(
+              session_active, lease_armed);
           break;
+        }
         case ai_keyboard::AudioControlAction::Stop:
           stop_stream(command->session_id);
           break;

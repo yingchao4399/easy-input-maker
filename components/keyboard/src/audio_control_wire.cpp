@@ -86,6 +86,13 @@ std::optional<AudioControlCommand> parse_audio_control(const std::uint8_t* buffe
   return command;
 }
 
+AudioControlAckStatus audio_control_start_ack_status(bool session_active,
+                                                     bool lease_armed) {
+  return session_active && lease_armed
+             ? AudioControlAckStatus::Ok
+             : AudioControlAckStatus::Unavailable;
+}
+
 std::size_t encode_control_ack(std::uint8_t* buffer,
                                AudioControlAction action,
                                AudioControlAckStatus status,

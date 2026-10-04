@@ -96,7 +96,21 @@ void ack_encodes_action_status_session_and_sequence() {
   assert(buffer[16] == 9);
 }
 
+void start_ack_requires_active_session_and_armed_lease() {
+  using ai_keyboard::AudioControlAckStatus;
+  using ai_keyboard::audio_control_start_ack_status;
+
+  assert(audio_control_start_ack_status(true, true) == AudioControlAckStatus::Ok);
+  assert(audio_control_start_ack_status(true, false) ==
+         AudioControlAckStatus::Unavailable);
+  assert(audio_control_start_ack_status(false, true) ==
+         AudioControlAckStatus::Unavailable);
+  assert(audio_control_start_ack_status(false, false) ==
+         AudioControlAckStatus::Unavailable);
+}
+
 int main() {
+  start_ack_requires_active_session_and_armed_lease();
   heartbeat_encodes_magic_flags_session_and_sequence();
   heartbeat_idle_flags_are_zero();
   control_roundtrip_via_manual_encoding();

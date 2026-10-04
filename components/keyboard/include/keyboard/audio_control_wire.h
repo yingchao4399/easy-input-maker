@@ -56,6 +56,10 @@ std::size_t encode_heartbeat(std::uint8_t* buffer,
 std::optional<AudioControlCommand> parse_audio_control(const std::uint8_t* buffer,
                                                        std::size_t length);
 
+// Start is accepted only when its session is active and its lease is armed.
+AudioControlAckStatus audio_control_start_ack_status(bool session_active,
+                                                     bool lease_armed);
+
 // buffer 至少 kControlAckPacketBytes;返回写入字节数。
 std::size_t encode_control_ack(std::uint8_t* buffer,
                                AudioControlAction action,
