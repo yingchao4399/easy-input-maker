@@ -170,6 +170,7 @@ struct AppContext {
   ai_keyboard::AudioIoArbiter audio_io_arbiter;
   easy_input::KeyboardAudioLink audio;
   bool audio_ready = false;
+  std::uint32_t music_frame_generation = 0;
 #if defined(EASY_INPUT_SPEAKER_DIAGNOSTIC) || \
     defined(EASY_INPUT_SPEAKER_ASSETS_PRODUCT)
   easy_input::SpeakerOutput speaker;
@@ -3776,6 +3777,11 @@ extern "C" void app_main(void) {
         platform_selection_now);
     sync_led_status(&app, millis());
     sync_audio_power_hold(&app);
+    easy_input::MusicLevelFrame music_frame;
+    if (app.audio.music_frame_since(app.music_frame_generation, &music_frame)) {
+      app.music_frame_generation = music_frame.generation;
+      app.leds.set_music_level(music_frame.level, music_frame.received_ms);
+    }
     app.leds.update(millis());
     if (app.cold_boot_feedback.state() ==
             ai_keyboard::ColdBootFeedbackState::VisualRunning &&

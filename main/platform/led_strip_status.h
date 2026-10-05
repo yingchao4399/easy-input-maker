@@ -52,6 +52,7 @@ class StatusLedStrip {
   void show_input_event(ai_keyboard::InputId input,
                         ai_keyboard::InputPhase phase,
                         std::uint32_t now_ms);
+  void set_music_level(std::uint8_t level, std::uint32_t received_ms);
   void update(std::uint32_t now_ms);
   bool next_update_deadline_ms(std::uint32_t now_ms,
                                std::uint32_t* deadline_ms) const;
@@ -71,6 +72,7 @@ class StatusLedStrip {
   void render_background_status(std::uint32_t now_ms);
   void render_agent_status();
   void render_idle_status();
+  void render_music_status();
   void set_all(Rgb color);
   void render_active_effect();
   void render_solid_effect();
@@ -94,6 +96,9 @@ class StatusLedStrip {
   bool agent_status_active_ = false;
   bool agent_status_rendered_ = false;
   bool idle_rendered_ = false;
+  std::uint8_t music_level_ = 0;
+  std::uint32_t music_expires_ms_ = 0;
+  bool music_active_ = false;
 };
 
 }  // namespace easy_input

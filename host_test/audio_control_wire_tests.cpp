@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "keyboard/audio_control_wire.h"
+#include "keyboard/music_led.h"
 
 using ai_keyboard::AudioControlAckStatus;
 using ai_keyboard::AudioControlAction;
@@ -109,7 +110,40 @@ void start_ack_requires_active_session_and_armed_lease() {
          AudioControlAckStatus::Unavailable);
 }
 
+void music_level_rejects_malformed_packets_and_old_sequences() {
+  std::array<std::uint8_t, ai_keyboard::kMusicLevelPacketBytes> buffer{};
+  std::memcpy(buffer.data(), "EILM", 4);
+  buffer[4] = ai_keyboard::kAudioControlWireVersion;
+  buffer[5] = 180;
+  buffer[8] = 7;
+  const auto parsed = ai_keyboard::parse_music_level(buffer.data(), buffer.size());
+  assert(parsed && parsed->level == 180 && parsed->sequence == 7);
+  assert(!ai_keyboard::parse_music_level(buffer.data(), buffer.size() - 1));
+  assert(!ai_keyboard::parse_music_level(nullptr, buffer.size()));
+  buffer[6] = 1;
+  assert(!ai_keyboard::parse_music_level(buffer.data(), buffer.size()));
+  buffer[6] = 0;
+  buffer[4] = 2;
+  assert(!ai_keyboard::parse_music_level(buffer.data(), buffer.size()));
+  assert(ai_keyboard::music_sequence_newer(8, 7));
+  assert(!ai_keyboard::music_sequence_newer(7, 7));
+  assert(!ai_keyboard::music_sequence_newer(6, 7));
+  assert(ai_keyboard::music_sequence_newer(0, UINT32_MAX));
+  assert(!ai_keyboard::music_sequence_newer(0x80000007U, 7));
+}
+
+void music_levels_cover_silence_middle_and_full_scale() {
+  const std::array<std::uint8_t, 5> silence{0, 0, 0, 0, 0};
+  const std::array<std::uint8_t, 5> middle{51, 1, 0, 0, 0};
+  const std::array<std::uint8_t, 5> full{51, 51, 51, 51, 51};
+  assert(ai_keyboard::music_led_levels(0) == silence);
+  assert(ai_keyboard::music_led_levels(52) == middle);
+  assert(ai_keyboard::music_led_levels(255) == full);
+}
+
 int main() {
+  music_levels_cover_silence_middle_and_full_scale();
+  music_level_rejects_malformed_packets_and_old_sequences();
   start_ack_requires_active_session_and_armed_lease();
   heartbeat_encodes_magic_flags_session_and_sequence();
   heartbeat_idle_flags_are_zero();

@@ -3,6 +3,7 @@
 #include "driver/rmt_tx.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
+#include "keyboard/music_led.h"
 
 namespace easy_input {
 namespace {
@@ -372,6 +373,14 @@ void StatusLedStrip::show_input_event(ai_keyboard::InputId input,
   show_feedback(feedback, now_ms);
 }
 
+void StatusLedStrip::set_music_level(std::uint8_t level,
+                                     std::uint32_t received_ms) {
+  music_level_ = level;
+  music_active_ = level != 0;
+  music_expires_ms_ = received_ms + 350U;
+  idle_rendered_ = false;
+}
+
 void StatusLedStrip::show_feedback(const ai_keyboard::InputActivityFeedback& feedback,
                                    std::uint32_t now_ms,
                                    bool replay_full_duration_after_boot) {
@@ -480,6 +489,10 @@ void StatusLedStrip::release_cold_boot_visual_ownership(
 }
 
 void StatusLedStrip::update(std::uint32_t now_ms) {
+  if (music_active_ && !deadline_pending(now_ms, music_expires_ms_)) {
+    music_active_ = false;
+    idle_rendered_ = false;
+  }
   if (agent_status_active_ && !agent_status_valid(now_ms)) {
     agent_status_active_ = false;
     agent_status_rendered_ = false;
@@ -536,6 +549,7 @@ bool StatusLedStrip::next_update_deadline_ms(
     }
   }
   add(agent_status_active_, agent_status_expires_ms_);
+  add(music_active_, music_expires_ms_);
   if (!idle_rendered_ && !active_feedback_.active &&
       !cold_boot_sequence_.active()) {
     add(true, now_ms);
@@ -559,7 +573,22 @@ void StatusLedStrip::render_background_status(std::uint32_t now_ms) {
   }
 
   agent_status_rendered_ = false;
+  if (music_active_ && deadline_pending(now_ms, music_expires_ms_)) {
+    render_music_status();
+    flush();
+    return;
+  }
   render_idle_status();
+}
+
+void StatusLedStrip::render_music_status() {
+  const auto levels = ai_keyboard::music_led_levels(music_level_);
+  for (std::size_t index = 0; index < leds_.size(); ++index) {
+    const auto value = levels[index];
+    leds_[index] = {static_cast<std::uint8_t>(value / 3U),
+                    0,
+                    static_cast<std::uint8_t>(value / 2U)};
+  }
 }
 
 void StatusLedStrip::render_agent_status() {

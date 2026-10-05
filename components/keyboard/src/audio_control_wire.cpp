@@ -8,6 +8,7 @@ namespace {
 constexpr std::array<std::uint8_t, 4> kHeartbeatMagic{{'E', 'I', 'H', 'B'}};
 constexpr std::array<std::uint8_t, 4> kControlMagic{{'E', 'I', 'C', 'C'}};
 constexpr std::array<std::uint8_t, 4> kControlAckMagic{{'E', 'I', 'C', 'A'}};
+constexpr std::array<std::uint8_t, 4> kMusicLevelMagic{{'E', 'I', 'L', 'M'}};
 
 void write_le32(std::uint8_t* destination, std::uint32_t value) {
   destination[0] = static_cast<std::uint8_t>(value & 0xFF);
@@ -84,6 +85,21 @@ std::optional<AudioControlCommand> parse_audio_control(const std::uint8_t* buffe
   command.sequence = read_le32(buffer + 16);
   std::memcpy(command.token.data(), buffer + 20, kControlTokenBytes);
   return command;
+}
+
+std::optional<MusicLevelPacket> parse_music_level(const std::uint8_t* buffer,
+                                                  std::size_t length) {
+  if (buffer == nullptr || length != kMusicLevelPacketBytes ||
+      std::memcmp(buffer, kMusicLevelMagic.data(), kMusicLevelMagic.size()) != 0 ||
+      buffer[4] != kAudioControlWireVersion || buffer[6] != 0 || buffer[7] != 0) {
+    return std::nullopt;
+  }
+  return MusicLevelPacket{buffer[5], read_le32(buffer + 8)};
+}
+
+bool music_sequence_newer(std::uint32_t candidate, std::uint32_t previous) {
+  const auto distance = candidate - previous;
+  return distance != 0 && distance < 0x80000000U;
 }
 
 AudioControlAckStatus audio_control_start_ack_status(bool session_active,

@@ -43,6 +43,12 @@ struct KeyboardWifiServiceSnapshot {
   bool speaker_sync_key_valid = false;
 };
 
+struct MusicLevelFrame {
+  std::uint8_t level = 0;
+  std::uint32_t received_ms = 0;
+  std::uint32_t generation = 0;
+};
+
 struct KeyboardWifiServiceLease {
   std::uint32_t lease_id = 0U;
   std::uint32_t generation = 0U;
@@ -96,6 +102,7 @@ class KeyboardAudioLink {
   std::string capture_status() const;
   KeyboardAudioDiagnostics diagnostics() const;
   bool streaming() const;
+  bool music_frame_since(std::uint32_t generation, MusicLevelFrame* frame) const;
   // 只有整机已经满足深睡条件时,才由电源策略请求释放音频控制 Wi-Fi。
   void request_wifi_release_for_deep_sleep();
   // 任意设备活动会取消尚未完成的深睡释放;若已断网则恢复控制通道。
@@ -228,6 +235,7 @@ class KeyboardAudioLink {
   bool wifi_reconnect_requested_ = false;
   TickType_t wifi_reconnect_requested_tick_ = 0;
   std::uint32_t control_heartbeat_request_generation_ = 0;
+  MusicLevelFrame music_frame_;
   WorkReadyCallback work_ready_callback_ = nullptr;
   void* work_ready_callback_context_ = nullptr;
   HeartbeatExtensionCallback heartbeat_extension_callback_ = nullptr;

@@ -60,6 +60,8 @@ constexpr std::size_t kAudioCaptureQueueFrames = 64;
 constexpr std::uint32_t kAudioStreamTaskStack = 6144;
 constexpr std::uint32_t kAudioCaptureTaskStack = 4096;
 constexpr std::uint32_t kControlHeartbeatIntervalMs = 2000;
+constexpr std::uint32_t kMusicMinFrameIntervalMs = 30;
+constexpr std::uint32_t kMusicSequenceResetMs = 500;
 constexpr std::uint32_t kControlRecvTimeoutMs = 300;
 constexpr std::uint32_t kControlConfigPollMs = 500;
 constexpr std::uint32_t kControlWifiRetryMs = 10000;
@@ -767,6 +769,17 @@ bool KeyboardAudioLink::streaming() const {
   return active;
 }
 
+bool KeyboardAudioLink::music_frame_since(std::uint32_t generation,
+                                          MusicLevelFrame* frame) const {
+  if (frame == nullptr) return false;
+  lock();
+  const bool changed = music_frame_.generation != 0 &&
+                       music_frame_.generation != generation;
+  if (changed) *frame = music_frame_;
+  unlock();
+  return changed;
+}
+
 void KeyboardAudioLink::task_entry(void* arg) {
   auto* link = static_cast<KeyboardAudioLink*>(arg);
   if (link == nullptr) {
@@ -839,6 +852,9 @@ void KeyboardAudioLink::run_control_channel() {
   // 避免开机窗口内两个任务并发调用 esp_wifi 配置/连接。
   TickType_t last_wifi_attempt_tick = xTaskGetTickCount();
   TickType_t last_resolve_attempt_tick = 0;
+  TickType_t last_music_tick = 0;
+  std::uint32_t last_music_sequence = 0;
+  bool music_sequence_seen = false;
 
   const auto close_control_socket = [&sock, &dest_valid]() {
     if (sock >= 0) {
@@ -1180,6 +1196,16 @@ void KeyboardAudioLink::run_control_channel() {
         }
         continue;
       }
+      // A separate listener on the same configured computer can discover the
+      // board without taking the existing companion's audio_port socket.
+      sockaddr_in music_dest = dest;
+      music_dest.sin_port = htons(ai_keyboard::kMusicDiscoveryPort);
+      (void)sendto(sock,
+                   heartbeat.data(),
+                   heartbeat_length,
+                   0,
+                   reinterpret_cast<sockaddr*>(&music_dest),
+                   sizeof(music_dest));
       last_heartbeat_tick = now;
       handled_heartbeat_request_generation = heartbeat_request_generation;
       note_control_state(heartbeat_requested
@@ -1213,6 +1239,29 @@ void KeyboardAudioLink::run_control_channel() {
                "audio control config/control datagram too large bytes=%d limit=%u",
                received,
                static_cast<unsigned>(ai_keyboard::kConfigMaxJsonLen));
+      continue;
+    }
+    const auto music = ai_keyboard::parse_music_level(
+        receive_buffer.data(), static_cast<std::size_t>(received));
+    if (music.has_value()) {
+      if (from.sin_addr.s_addr != dest.sin_addr.s_addr) continue;
+      const auto music_now = xTaskGetTickCount();
+      const auto elapsed = music_now - last_music_tick;
+      if (music_sequence_seen && elapsed < pdMS_TO_TICKS(kMusicMinFrameIntervalMs))
+        continue;
+      if (music_sequence_seen && elapsed <= pdMS_TO_TICKS(kMusicSequenceResetMs) &&
+          !ai_keyboard::music_sequence_newer(music->sequence, last_music_sequence))
+        continue;
+      last_music_tick = music_now;
+      last_music_sequence = music->sequence;
+      music_sequence_seen = true;
+      lock();
+      music_frame_.level = music->level;
+      music_frame_.received_ms =
+          static_cast<std::uint32_t>(esp_timer_get_time() / 1000ULL);
+      if (++music_frame_.generation == 0) music_frame_.generation = 1;
+      unlock();
+      note_remote_work_ready();
       continue;
     }
     const auto command =

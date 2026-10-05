@@ -17,6 +17,8 @@ inline constexpr std::size_t kHeartbeatPacketBytes = 20;
 inline constexpr std::size_t kExtendedHeartbeatPacketBytes = 80;
 inline constexpr std::size_t kControlPacketBytes = 36;
 inline constexpr std::size_t kControlAckPacketBytes = 20;
+inline constexpr std::size_t kMusicLevelPacketBytes = 12;
+inline constexpr std::uint16_t kMusicDiscoveryPort = 17334;
 inline constexpr std::size_t kControlTokenBytes = 16;
 
 inline constexpr std::uint8_t kAudioControlWireVersion = 1;
@@ -45,6 +47,17 @@ struct AudioControlCommand {
   std::uint32_t sequence = 0;
   std::array<std::uint8_t, kControlTokenBytes> token{};
 };
+
+struct MusicLevelPacket {
+  std::uint8_t level = 0;
+  std::uint32_t sequence = 0;
+};
+
+// EILM v1: magic[4], version[1], level[1], reserved[2], sequence LE[4].
+// An exact length and zero reserved bytes prevent accidental protocol overlap.
+std::optional<MusicLevelPacket> parse_music_level(const std::uint8_t* buffer,
+                                                  std::size_t length);
+bool music_sequence_newer(std::uint32_t candidate, std::uint32_t previous);
 
 // buffer 至少 kHeartbeatPacketBytes;返回写入字节数。
 std::size_t encode_heartbeat(std::uint8_t* buffer,
