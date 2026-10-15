@@ -28,6 +28,9 @@ temp/
 *.core
 *.pyc
 __pycache__/
+music-companion/bin/
+music-companion/obj/
+music-companion/publish/
 assets/readme/render/
 assets/readme/page/
 

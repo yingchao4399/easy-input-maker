@@ -1,5 +1,7 @@
 # EasyInput Maker
 
+> 第三课个人练习分支 `music-led-complete`：在公开固件基线上增加 Windows 系统音频五灯律动，并附上 [电脑端伴随程序源码](music-companion/) 与 [作业代码说明](LESSON-3-MUSIC-LED.md)。本分支的软件自检与源码不代表已经完成音乐固件烧录或真机灯效验收。以下原项目介绍描述的是公共基线。
+
 ![EasyInput Maker：8 个按键与编码器连接 ESP32-S3、USB/BLE、灯光和音频能力的社区固件](assets/readme/hero.svg)
 
 **从一份完整功能基线开始，让 AI 帮你增加下一项硬件能力。**
